@@ -1,3 +1,5 @@
+using FreeVideoCompressor.Application.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -5,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddSingleton<FileService>();
 
 var app = builder.Build();
 
@@ -19,5 +23,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.MapControllers();
+app.UseStaticFiles();
 
 app.Run();
