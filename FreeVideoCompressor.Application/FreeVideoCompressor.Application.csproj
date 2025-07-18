@@ -12,6 +12,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\FreeVideoCompressor.DataAccess\FreeVideoCompressor.DataAccess.csproj" />
       <ProjectReference Include="..\FreeVideoCompressor.Domain\FreeVideoCompressor.Domain.csproj" />
     </ItemGroup>
 

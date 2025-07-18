@@ -1,5 +1,7 @@
 using FreeVideoCompressor.Application.Services;
 using FreeVideoCompressor.DataAccess;
+using FreeVideoCompressor.DataAccess.Repositories;
+using FreeVideoCompressor.Domain.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,7 +17,11 @@ builder.Services.AddDbContext<FreeVideoCompressorDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
 
-builder.Services.AddSingleton<FileService>();
+builder.Services.AddScoped<CompressVideoFlowRepository>();
+
+builder.Services.AddScoped<IFileService, FileService>();
+builder.Services.AddScoped<CompressService>();
+
 
 var app = builder.Build();
 

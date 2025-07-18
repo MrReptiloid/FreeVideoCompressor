@@ -9,4 +9,5 @@ public enum CompressVideoFlowStatus
 
 public record CompressVideoFlow(
     Guid Id,
-    CompressVideoFlowStatus Status);
+    CompressVideoFlowStatus Status,
+    string InputFilePath);

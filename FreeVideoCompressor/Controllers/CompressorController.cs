@@ -1,4 +1,5 @@
 using FreeVideoCompressor.Application.Services;
+using FreeVideoCompressor.Domain.Abstractions;
 using FreeVideoCompressor.Domain.Contracts;
 using FreeVideoCompressor.Domain.Failures;
 using FreeVideoCompressor.Domain.Utilities;
@@ -11,11 +12,13 @@ namespace FreeVideoCompressor.Controllers;
 public class CompressorController : ControllerBase
 {
     private readonly string[] _supportedVideoFormats = [ ".mp4", ".avi", ".mov", ".mkv", ".flv", ".wmv", ".webm" ];
-    private readonly FileService _fileService;
+    private readonly IFileService _fileService;
+    private readonly CompressService _compressService;
 
-    public CompressorController(FileService fileService)
+    public CompressorController(IFileService fileService, CompressService compressService)
     {
         _fileService = fileService;
+        _compressService = compressService;
     }
     
     [HttpPost]
@@ -33,15 +36,22 @@ public class CompressorController : ControllerBase
             return BadRequest($"Unsupported video format: {fileExtension}. Supported formats are: {string.Join(", ", _supportedVideoFormats)}");
         }
         
-        Result<bool, string> result = await ProcessVideoAsync(request.VideoFile);
+        Result<string, string> processResult = await ProcessVideoAsync(request.VideoFile);
+
+        if (processResult.IsErr)
+        {
+            return BadRequest(processResult.UnwrapErr());
+        }
+
+        Result<Unit, string> flowResult = await _compressService.InitFlow(processResult.Unwrap());
         
-        return result.Match<IActionResult>(
+        return flowResult.Match<IActionResult>(
             ok: _ => Ok("Video uploaded successfully."),
             err: errorMessage => BadRequest(errorMessage)
         );
     }
 
-    private async Task<Result<bool, string>> ProcessVideoAsync(IFormFile file)
+    private async Task<Result<string, string>> ProcessVideoAsync(IFormFile file)
     {
         try
         {
@@ -54,13 +64,13 @@ public class CompressorController : ControllerBase
             Result<string, FileFailure> saveResult = await _fileService.SaveFileAsync(bytes, wwwrootDir, file.FileName);
 
             return saveResult.Match(
-                ok: _ => Result<bool, string>.Ok(true),
-                err: failure => Result<bool, string>.Err($"{failure.BaseMessage}\n{failure.Message}")
+                ok: success => Result<string, string>.Ok(success),
+                err: failure => Result<string, string>.Err($"{failure.BaseMessage}\n{failure.Message}")
             );
         }
         catch (Exception ex)
         {
-            return Result<bool, string>.Err($"An error occurred while processing the video: {ex.Message}");
+            return Result<string, string>.Err($"An error occurred while processing the video: {ex.Message}");
         }
     }
     

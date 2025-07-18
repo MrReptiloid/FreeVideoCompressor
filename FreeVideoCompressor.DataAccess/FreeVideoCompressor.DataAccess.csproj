@@ -23,8 +23,4 @@
       <ProjectReference Include="..\FreeVideoCompressor.Domain\FreeVideoCompressor.Domain.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Folder Include="Repositories\" />
-    </ItemGroup>
-
 </Project>
