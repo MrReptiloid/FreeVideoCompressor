@@ -19,6 +19,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\FreeVideoCompressor.Application\FreeVideoCompressor.Application.csproj" />
+      <ProjectReference Include="..\FreeVideoCompressor.Domain\FreeVideoCompressor.Domain.csproj" />
     </ItemGroup>
 
 </Project>

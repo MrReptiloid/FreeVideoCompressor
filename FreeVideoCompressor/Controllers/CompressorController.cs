@@ -1,5 +1,5 @@
 using FreeVideoCompressor.Application.Services;
-using FreeVideoCompressor.Contracts;
+using FreeVideoCompressor.Domain.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FreeVideoCompressor.Controllers;
