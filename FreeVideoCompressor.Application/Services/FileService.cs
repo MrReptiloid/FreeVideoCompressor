@@ -1,36 +1,119 @@
-﻿using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
+﻿using FreeVideoCompressor.Domain.Abstractions;
+using FreeVideoCompressor.Domain.Failures;
+using FreeVideoCompressor.Domain.Utilities;
 
 namespace FreeVideoCompressor.Application.Services;
 
-public class FileService
+public class FileService : IFileService
 {
-    private const string UploadsFolder = "Uploads";
-
-    private readonly string _uploadsFolder;
-    private readonly IWebHostEnvironment _webHostEnvironment;
-    
-    public FileService(IWebHostEnvironment webHostEnvironment)
+    public async Task<Result<byte[], FileFailure>> ReadFileAsync(string filePath)
     {
-        _webHostEnvironment = webHostEnvironment;
-        
-        _uploadsFolder = Path.Combine(_webHostEnvironment.WebRootPath, UploadsFolder);
-        Directory.CreateDirectory(_uploadsFolder); 
-    }
-    
-    public async Task<string> SaveFileAsync(IFormFile file)
-    {
-        
-        if (file.Length > 0)
+        if (string.IsNullOrWhiteSpace(filePath))
         {
-            string uniqueFileName = $"{Guid.NewGuid()}_{file.FileName}";
-            string filePath = Path.Combine(_uploadsFolder, uniqueFileName);
-            await using Stream fileStream = new FileStream(filePath, FileMode.Create);
-            await file.CopyToAsync(fileStream);
-
-            return filePath; 
+            return Result<byte[], FileFailure>.Err(
+                FileFailure.InvalidPath("File path cannot be null or empty."));
         }
 
-        return "Error when saving file.";
+        try
+        {
+            if (!File.Exists(filePath))
+            {
+                return Result<byte[], FileFailure>.Err(FileFailure.InvalidPath());
+            }
+
+            byte[] bytes = await File.ReadAllBytesAsync(filePath);
+            return Result<byte[], FileFailure>.Ok(bytes);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Result<byte[], FileFailure>.Err(FileFailure.AccessDenied(innerException: ex));
+        }
+        catch (Exception ex)
+        {
+            return Result<byte[], FileFailure>.Err(FileFailure.Unknown(innerException: ex));
+        }
+    }
+
+    public async Task<Result<string, FileFailure>> SaveFileAsync(byte[] fileContent, string directory, string filename)
+    {
+        if (fileContent.Length == 0 || string.IsNullOrWhiteSpace(directory) || string.IsNullOrWhiteSpace(filename))
+        {
+            return Result<string, FileFailure>.Err(FileFailure.InvalidPath());
+        }
+
+        try
+        {
+             Directory.CreateDirectory(directory);
+             string fulPath = Path.Combine(directory, filename);
+             
+             await File.WriteAllBytesAsync(fulPath, fileContent);
+             return Result<string, FileFailure>.Ok(fulPath);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Result<string, FileFailure>.Err(FileFailure.AccessDenied(innerException: ex));
+        }
+        catch (IOException ex)
+        {
+            return Result<string, FileFailure>.Err(FileFailure.AlreadyExists(innerException: ex));
+        }
+        catch (Exception ex)
+        {
+            return Result<string, FileFailure>.Err(FileFailure.Unknown(innerException: ex));
+        }
+    }
+
+    public Result<bool, FileFailure> FileExists(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return Result<bool, FileFailure>.Err(
+                FileFailure.InvalidPath("File path cannot be null or empty."));
+        }
+
+        try
+        {
+            bool exists = File.Exists(filePath);
+            return Result<bool, FileFailure>.Ok(exists);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Result<bool, FileFailure>.Err(FileFailure.AccessDenied(innerException: ex));
+        }
+        catch (Exception ex)
+        {
+            return Result<bool, FileFailure>.Err(FileFailure.Unknown(innerException: ex));
+        }
+    }
+        
+
+    public async Task<Result<bool, FileFailure>> DeleteFileAsync(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            return Result<bool, FileFailure>.Err(FileFailure.InvalidPath("File path cannot be null or empty."));
+        }
+        
+        try
+        {
+            return await Task.Run(() =>
+            {
+                if (!File.Exists(filePath))
+                {
+                    return Result<bool, FileFailure>.Err(FileFailure.NotFound());
+                }
+
+                File.Delete(filePath);
+                return Result<bool, FileFailure>.Ok(true);
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Result<bool, FileFailure>.Err(FileFailure.AccessDenied(innerException: ex));
+        }
+        catch (Exception ex)
+        {
+            return Result<bool, FileFailure>.Err(FileFailure.Unknown(innerException: ex));
+        }
     }
 }
