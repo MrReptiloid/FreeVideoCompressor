@@ -20,6 +20,8 @@ builder.Services.AddDbContext<FreeVideoCompressorDbContext>(options =>
 builder.Services.AddScoped<CompressVideoFlowRepository>();
 
 builder.Services.AddScoped<IFileService, FileService>();
+builder.Services.AddScoped<IVideoProcessingService, VideoProcessingService>();
+builder.Services.AddScoped<IVideoValidationService, VideoValidationService>();
 builder.Services.AddScoped<CompressService>();
 
 
