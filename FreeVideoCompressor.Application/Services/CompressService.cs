@@ -13,13 +13,14 @@ public class CompressService
         _compressVideoFlowRepository = compressVideoFlowRepository;
     }
     
-    public async Task<Result<Unit, string>> InitFlow(string filePath)
+    public async Task<Result<Unit, string>> InitFlow(string fileId, string filePath)
     {
-        CompressVideoFlow compressVideoFlow = new(
-            Id: Guid.NewGuid(),
-            Status: CompressVideoFlowStatus.Uploaded,
-            InputFilePath: filePath
-        );
+        CompressVideoFlow compressVideoFlow = new(){
+            Id = Guid.NewGuid(),
+            Status = CompressVideoFlowStatus.Uploaded,
+            FileId = fileId,
+            InputFilePath = filePath
+        };
         
         Result<Unit, string> createResult = await _compressVideoFlowRepository.CreateAsync(compressVideoFlow);
         if (createResult.IsErr)

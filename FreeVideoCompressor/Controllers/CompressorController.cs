@@ -36,22 +36,32 @@ public class CompressorController : ControllerBase
             return BadRequest($"Unsupported video format: {fileExtension}. Supported formats are: {string.Join(", ", _supportedVideoFormats)}");
         }
         
-        Result<string, string> processResult = await ProcessVideoAsync(request.VideoFile);
+        Result<(string FileId, string FullPath), string> processResult = await ProcessVideoAsync(request.VideoFile);
 
         if (processResult.IsErr)
         {
             return BadRequest(processResult.UnwrapErr());
         }
 
-        Result<Unit, string> flowResult = await _compressService.InitFlow(processResult.Unwrap());
+        Result<Unit, string> flowResult = await _compressService.InitFlow(
+            processResult.Unwrap().FileId,
+            processResult.Unwrap().FullPath);
         
         return flowResult.Match<IActionResult>(
-            ok: _ => Ok("Video uploaded successfully."),
-            err: errorMessage => BadRequest(errorMessage)
+            ok: _ => Ok(
+                new UploadVideoResponse
+                {
+                    FileId = processResult.Unwrap().FileId
+                }),
+            err: errorMessage => BadRequest(
+                new UploadVideoResponse
+                {
+                    Message = errorMessage
+                })
         );
     }
 
-    private async Task<Result<string, string>> ProcessVideoAsync(IFormFile file)
+    private async Task<Result<(string FileId, string FullPath), string>> ProcessVideoAsync(IFormFile file)
     {
         try
         {
@@ -60,17 +70,23 @@ public class CompressorController : ControllerBase
             byte[] bytes = stream.ToArray();
 
             string wwwrootDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Uploads");
+            string fileId = Guid.NewGuid().ToString();
 
-            Result<string, FileFailure> saveResult = await _fileService.SaveFileAsync(bytes, wwwrootDir, file.FileName);
+            Result<string, FileFailure> saveResult = await _fileService.SaveFileAsync(
+                bytes, 
+                wwwrootDir, 
+                $"{fileId}{Path.GetExtension(file.FileName)}");
 
             return saveResult.Match(
-                ok: success => Result<string, string>.Ok(success),
-                err: failure => Result<string, string>.Err($"{failure.BaseMessage}\n{failure.Message}")
+                ok: _ => Result<(string FileId, string FullPath), string>.Ok((fileId, saveResult.Unwrap())),
+                err: failure => Result<(string FileId, string FullPath), string>
+                    .Err($"{failure.BaseMessage}\n{failure.Message}")
             );
         }
         catch (Exception ex)
         {
-            return Result<string, string>.Err($"An error occurred while processing the video: {ex.Message}");
+            return Result<(string FileId, string FullPath), string>
+                .Err($"An error occurred while processing the video: {ex.Message}");
         }
     }
     

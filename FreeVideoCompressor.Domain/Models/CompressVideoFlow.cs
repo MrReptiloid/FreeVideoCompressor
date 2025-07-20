@@ -7,7 +7,10 @@ public enum CompressVideoFlowStatus
     Completed,
 }
 
-public record CompressVideoFlow(
-    Guid Id,
-    CompressVideoFlowStatus Status,
-    string InputFilePath);
+public record CompressVideoFlow
+{
+    public Guid Id { get; init; }
+    public CompressVideoFlowStatus Status { get; init; }
+    public string FileId { get; init; } = string.Empty!;
+    public string InputFilePath { get; init; } = string.Empty!;
+}
