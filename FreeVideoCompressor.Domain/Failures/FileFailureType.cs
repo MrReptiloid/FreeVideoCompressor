@@ -7,5 +7,6 @@ public enum FileFailureType
     InvalidPath,
     AlreadyExists,
     UnsupportedFormat,
+    TooLarge,
     Unknown
 }

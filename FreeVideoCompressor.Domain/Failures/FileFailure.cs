@@ -36,6 +36,11 @@ public sealed record FileFailure(
         return new FileFailure(FileFailureType.UnsupportedFormat, FileFailureMessageKeys.UnsupportedFormat, msg,
             innerException);
     }
+    
+    public static FileFailure TooLarge(string? msg = null, Exception? innerException = null)
+    {
+        return new FileFailure(FileFailureType.TooLarge, FileFailureMessageKeys.TooLarge, msg, innerException);
+    }
 
     public static FileFailure Unknown(string? msg = null, Exception? innerException = null)
     {
