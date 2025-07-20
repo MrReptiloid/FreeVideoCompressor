@@ -6,5 +6,6 @@ public enum FileFailureType
     AccessDenied,
     InvalidPath,
     AlreadyExists,
+    UnsupportedFormat,
     Unknown
 }
