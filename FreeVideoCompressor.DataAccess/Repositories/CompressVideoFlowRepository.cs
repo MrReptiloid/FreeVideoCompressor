@@ -26,4 +26,9 @@ public class CompressVideoFlowRepository
             return Result<Unit, string>.Err($"Failed to create CompressVideoFlow: {ex.Message}");
         }
     }
+
+    public async Task<Result<CompressVideoFlow?, string>> ReadAsync(Guid flowId)
+    {
+        return Result<CompressVideoFlow?, string>.Ok(await _dbContext.CompressVideoFlows.FindAsync(flowId));
+    }
 }

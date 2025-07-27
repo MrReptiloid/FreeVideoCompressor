@@ -23,6 +23,7 @@ builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<IVideoProcessingService, VideoProcessingService>();
 builder.Services.AddScoped<IVideoValidationService, VideoValidationService>();
 builder.Services.AddScoped<CompressService>();
+builder.Services.AddScoped<FfmpegService>();
 
 
 var app = builder.Build();
