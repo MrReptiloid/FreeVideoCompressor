@@ -1,20 +1,21 @@
 using FreeVideoCompressor.DataAccess.Repositories;
 using FreeVideoCompressor.Domain.Models;
 using FreeVideoCompressor.Domain.Utilities;
+using Hangfire;
 
 namespace FreeVideoCompressor.Application.Services;
 
 public class CompressService
 {
     private readonly CompressVideoFlowRepository _compressVideoFlowRepository;
-    private readonly FfmpegService _ffmpegService;
+    private readonly IBackgroundJobClient _jobClient;
     
     public CompressService(
         CompressVideoFlowRepository compressVideoFlowRepository,
-        FfmpegService ffmpegService)
+        IBackgroundJobClient jobClient)
     {
         _compressVideoFlowRepository = compressVideoFlowRepository;
-        _ffmpegService = ffmpegService;
+        _jobClient = jobClient;
     }
     
     public async Task<Result<CompressVideoFlow, string>> InitFlow(string fileId, string filePath)
@@ -35,7 +36,7 @@ public class CompressService
         return Result<CompressVideoFlow, string>.Ok(compressVideoFlow);
     }
 
-    public async Task<Result<Unit, string>> StartCompressAsync(Guid flowId)
+    public async Task<Result<Unit, string>> StartCompressAsync(Guid flowId, CancellationToken cancellationToken)
     {
         Result<CompressVideoFlow?, string> getFlowResult = await _compressVideoFlowRepository.ReadAsync(flowId);
         if (getFlowResult.IsErr || getFlowResult.Unwrap() == null)
@@ -50,7 +51,9 @@ public class CompressService
         }
         
         string outputFilePath = Path.Combine($"{compressVideoFlow.InputFilePath}_compressed.mp4");
-        await _ffmpegService.CompressAsync(compressVideoFlow.InputFilePath, outputFilePath);
+        
+        _ = _jobClient.Enqueue<FfmpegService>(fs =>
+            fs.CompressAsync(compressVideoFlow.InputFilePath, outputFilePath, cancellationToken));
         
         return Result<Unit, string>.Ok(Unit.Value);
     }

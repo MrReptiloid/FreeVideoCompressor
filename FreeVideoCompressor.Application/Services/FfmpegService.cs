@@ -6,7 +6,6 @@ namespace FreeVideoCompressor.Application.Services;
 
 public class FfmpegService
 {
-
     public async Task CompressAsync(
         string inputFilePath, 
         string outputFilePath, 

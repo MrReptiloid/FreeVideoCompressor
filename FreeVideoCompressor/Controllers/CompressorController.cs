@@ -53,10 +53,10 @@ public class CompressorController : ControllerBase
     }
     
     [HttpGet("{flowId}")]
-    public async Task<IActionResult> StartProcessing(string flowId)
+    public async Task<IActionResult> StartProcessing(string flowId, CancellationToken cancellationToken)
     {
         Guid flowGuid = Guid.Parse(flowId);
-        Result<Unit, string> flowResult = await _compressService.StartCompressAsync(flowGuid);
+        Result<Unit, string> flowResult = await _compressService.StartCompressAsync(flowGuid, cancellationToken);
         return flowResult.Match<IActionResult>(
             ok: _ => Ok(),
             err: errorMessage => BadRequest(new { Message = errorMessage })
