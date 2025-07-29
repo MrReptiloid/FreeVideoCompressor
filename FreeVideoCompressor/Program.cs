@@ -2,6 +2,8 @@ using FreeVideoCompressor.Application.Services;
 using FreeVideoCompressor.DataAccess;
 using FreeVideoCompressor.DataAccess.Repositories;
 using FreeVideoCompressor.Domain.Abstractions;
+using Hangfire;
+using Hangfire.MemoryStorage;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +18,10 @@ builder.Services.AddDbContext<FreeVideoCompressorDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
 });
+
+builder.Services.AddHangfire(cfg =>
+    cfg.UseMemoryStorage());
+builder.Services.AddHangfireServer();
 
 builder.Services.AddScoped<CompressVideoFlowRepository>();
 
@@ -40,5 +46,6 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.MapControllers();
 app.UseStaticFiles();
+app.UseHangfireDashboard();
 
 app.Run();
