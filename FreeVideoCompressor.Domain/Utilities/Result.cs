@@ -50,6 +50,21 @@ public readonly struct Result<TResult, TFailure> : IEquatable<Result<TResult, TF
         return IsOk ? throw new InvalidOperationException("Cannot unwrap an Ok result") : _error!;
     }
     
+    public Result<TNext, TFailure> Map<TNext>(Func<TResult, TNext> mapFn)
+    {
+        return IsOk ? Result<TNext, TFailure>.Ok(mapFn(_value!)) : Result<TNext, TFailure>.Err(_error!);
+    }
+
+    public Result<TResult, TENext> MapErr<TENext>(Func<TFailure, TENext> mapFn) where TENext : notnull
+    {
+        return IsOk ? Result<TResult, TENext>.Ok(_value!) : Result<TResult, TENext>.Err(mapFn(_error!));
+    }
+
+    public Result<TNext, TFailure> Bind<TNext>(Func<TResult, Result<TNext, TFailure>> bindFn)
+    {
+        return IsOk ? bindFn(_value!) : Result<TNext, TFailure>.Err(_error!);
+    }
+    
     public TOut Match<TOut>(Func<TResult, TOut> ok, Func<TFailure, TOut> err)
     {
         return IsOk ? ok(_value!) : err(_error!);
