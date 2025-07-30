@@ -51,11 +51,25 @@ public class CompressService
         }
         
         string outputFilePath = Path.Combine($"{compressVideoFlow.InputFilePath}_compressed.mp4");
+
+        Result<Unit, string> patchResult =
+            await _compressVideoFlowRepository.PatchStatusAsync(compressVideoFlow.Id,
+                CompressVideoFlowStatus.Processing);
+        if (patchResult.IsErr)
+        {
+            return Result<Unit, string>.Err($"Failed to update compress flow status: {patchResult.UnwrapErr()}");
+        }
         
-        _ = _jobClient.Enqueue<FfmpegService>(fs =>
+        string jobId = _jobClient.Enqueue<FfmpegService>(fs =>
             fs.CompressAsync(compressVideoFlow.InputFilePath, outputFilePath, cancellationToken));
+        
+        _jobClient.ContinueJobWith<CompressService>(jobId, ns => OnCompressionCompleted(compressVideoFlow.Id));
         
         return Result<Unit, string>.Ok(Unit.Value);
     }
     
+    public async Task OnCompressionCompleted(Guid flowId)
+    {
+        await _compressVideoFlowRepository.PatchStatusAsync(flowId, CompressVideoFlowStatus.Completed);
+    }
 }

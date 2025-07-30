@@ -3,7 +3,7 @@ namespace FreeVideoCompressor.Domain.Models;
 public enum CompressVideoFlowStatus
 {
     Uploaded,
-    Compressing,
+    Processing,
     Completed,
 }
 
