@@ -62,4 +62,17 @@ public class CompressorController : ControllerBase
             err: errorMessage => BadRequest(new { Message = errorMessage })
         );
     }
+
+    [HttpGet]
+    [Route("download-path/{flowId}")]
+    public async Task<IActionResult> GetDownloadLink(string flowId, CancellationToken cancellationToken)
+    {
+        Guid flowGuid = Guid.Parse(flowId);
+        Result<string, string> flowResult = await _compressService.GetLocalOutputPathAsync(flowGuid, cancellationToken);
+        return flowResult.Match<IActionResult>(
+            ok: _ => Ok(),
+            err: errorMessage => BadRequest(new { Message = errorMessage })
+        );
+    }
+
 }

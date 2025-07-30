@@ -32,23 +32,23 @@ public class CompressVideoFlowRepository
         return Result<CompressVideoFlow?, string>.Ok(await _dbContext.CompressVideoFlows.FindAsync(flowId));
     }
 
-    public async Task<Result<Unit, string>> PatchStatusAsync(Guid id, CompressVideoFlowStatus status)
+   public async Task<Result<Unit, string>> PatchStatusAsync(Guid id, CompressVideoFlowStatus status)
+{
+    try
     {
-        try
+        var existingFlow = await _dbContext.CompressVideoFlows.FindAsync(id);
+        if (existingFlow == null)
         {
-            CompressVideoFlow flow = new()
-            {
-                Id = id,
-                Status = status
-            };
+            return Result<Unit, string>.Err("CompressVideoFlow not found");
+        }
 
-            _dbContext.Entry(flow).Property(j => j.Status).IsModified = true;
-            await _dbContext.SaveChangesAsync();
-            return Result<Unit, string>.Ok(Unit.Value);
-        }
-        catch (Exception ex)
-        {
-            return Result<Unit, string>.Err($"Failed to patch status: {ex.Message}");
-        }
+        existingFlow.Status = status;
+        await _dbContext.SaveChangesAsync();
+        return Result<Unit, string>.Ok(Unit.Value);
     }
+    catch (Exception ex)
+    {
+        return Result<Unit, string>.Err($"Failed to patch status: {ex.Message}");
+    }
+}
 }
