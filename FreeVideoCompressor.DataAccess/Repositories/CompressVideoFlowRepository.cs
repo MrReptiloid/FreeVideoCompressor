@@ -27,9 +27,14 @@ public class CompressVideoFlowRepository
         }
     }
 
-    public async Task<Result<CompressVideoFlow?, string>> ReadAsync(Guid flowId)
+    public async Task<Result<CompressVideoFlow, string>> ReadAsync(Guid flowId)
     {
-        return Result<CompressVideoFlow?, string>.Ok(await _dbContext.CompressVideoFlows.FindAsync(flowId));
+        CompressVideoFlow? result = await _dbContext.CompressVideoFlows.FindAsync(flowId);
+        if (result == null)
+        {
+            return Result<CompressVideoFlow, string>.Err("CompressVideoFlow not found");
+        }
+        return Result<CompressVideoFlow, string>.Ok(result);
     }
 
    public async Task<Result<Unit, string>> PatchStatusAsync(Guid id, CompressVideoFlowStatus status)

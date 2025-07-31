@@ -27,66 +27,56 @@ public class CompressService
             InputFilePath = filePath
         };
         
-        Result<Unit, string> createResult = await _compressVideoFlowRepository.CreateAsync(compressVideoFlow);
-        if (createResult.IsErr)
-        {
-            return Result<CompressVideoFlow, string>.Err($"Failed to create compress flow: {createResult.UnwrapErr()}");
-        }
-        
-        return Result<CompressVideoFlow, string>.Ok(compressVideoFlow);
+        return await _compressVideoFlowRepository.CreateAsync(compressVideoFlow)
+            .MapErr(err => $"Failed to create compress flow: {err}")
+            .Map(_ => compressVideoFlow);
     }
 
     public async Task<Result<Unit, string>> StartCompressAsync(Guid flowId, CancellationToken cancellationToken)
     {
-        Result<CompressVideoFlow?, string> getFlowResult = await _compressVideoFlowRepository.ReadAsync(flowId);
-        if (getFlowResult.IsErr || getFlowResult.Unwrap() == null)
-        {
-            return Result<Unit, string>.Err("No compress flow found");
-        }
-        
-        CompressVideoFlow compressVideoFlow = getFlowResult.Unwrap()!;
-        if (compressVideoFlow.Status != CompressVideoFlowStatus.Uploaded)
-        {
-            return Result<Unit, string>.Err("Compress flow is not in the correct state to start compression");
-        }
-        
-        string outputFilePath = Path.Combine($"{compressVideoFlow.InputFilePath}_compressed.mp4");
-
-        Result<Unit, string> patchResult =
-            await _compressVideoFlowRepository.PatchStatusAsync(compressVideoFlow.Id,
-                CompressVideoFlowStatus.Processing);
-        if (patchResult.IsErr)
-        {
-            return Result<Unit, string>.Err($"Failed to update compress flow status: {patchResult.UnwrapErr()}");
-        }
-        
-        string jobId = _jobClient.Enqueue<FfmpegService>(fs =>
-            fs.CompressAsync(compressVideoFlow.InputFilePath, outputFilePath, cancellationToken));
-        
-        _jobClient.ContinueJobWith<CompressService>(jobId, cs => cs.OnCompressionCompleted(compressVideoFlow.Id));
-        
-        return Result<Unit, string>.Ok(Unit.Value);
+        return await _compressVideoFlowRepository.ReadAsync(flowId)
+            .Bind(flow => EnsureFlowStatus(flow, CompressVideoFlowStatus.Uploaded))
+            .BindAsync(async flow => await EnqueueCompressionAsync(flow, cancellationToken));
     }
-
     public async Task<Result<string, string>> GetLocalOutputPathAsync(Guid flowId, CancellationToken cancellationToken)
     {
-        Result<CompressVideoFlow?, string> getFlowResult = await _compressVideoFlowRepository.ReadAsync(flowId);
-        if (getFlowResult.IsErr || getFlowResult.Unwrap() == null)
-        {
-            return Result<string, string>.Err("No compress flow found");
-        }
-        
-        CompressVideoFlow compressVideoFlow = getFlowResult.Unwrap()!;
-        if (compressVideoFlow.Status != CompressVideoFlowStatus.Completed)
-        {
-            return Result<string, string>.Err("Compress flow is not in the correct state to start downloading");
-        }
-
-        return Result<string, string>.Ok(Path.Combine(Constants.UploadsPath, flowId.ToString()));
+        return await _compressVideoFlowRepository.ReadAsync(flowId)
+            .Bind(flow => EnsureFlowExists(flow))
+            .Bind(flow => EnsureFlowStatus(flow, CompressVideoFlowStatus.Completed))
+            .Map(_ => Path.Combine(Constants.UploadsPath, flowId.ToString()));
     }
     
     public  async Task OnCompressionCompleted(Guid flowId)
     {
         await _compressVideoFlowRepository.PatchStatusAsync(flowId, CompressVideoFlowStatus.Completed);
+    }
+    
+    private Result<CompressVideoFlow, string> EnsureFlowStatus(CompressVideoFlow flow, CompressVideoFlowStatus status)
+    {
+        return flow.Status == status
+            ? Result<CompressVideoFlow, string>.Ok(flow)
+            : Result<CompressVideoFlow, string>.Err("Wrong status");
+    }
+    
+    private Result<CompressVideoFlow, string> EnsureFlowExists(CompressVideoFlow? flow)
+    {
+        return flow != null
+            ? Result<CompressVideoFlow, string>.Ok(flow)
+            : Result<CompressVideoFlow, string>.Err("No compress flow found");
+    }
+    
+    private async Task<Result<Unit, string>> EnqueueCompressionAsync(CompressVideoFlow flow, CancellationToken cancellationToken)
+    {
+        await _compressVideoFlowRepository.PatchStatusAsync(flow.Id, CompressVideoFlowStatus.Processing);
+
+        var outputFilePath = $"{flow.InputFilePath}_compressed.mp4";
+
+        var jobId = _jobClient.Enqueue<FfmpegService>(fs =>
+            fs.CompressAsync(flow.InputFilePath, outputFilePath, cancellationToken));
+
+        _jobClient.ContinueJobWith<CompressService>(jobId, cs =>
+            cs.OnCompressionCompleted(flow.Id));
+
+        return Result<Unit, string>.Ok(Unit.Value);
     }
 }
